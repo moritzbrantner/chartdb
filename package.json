@@ -1,14 +1,28 @@
 {
-    "name": "chartdb",
-    "private": true,
+    "name": "@moritzbrantner/chartdb-local",
+    "private": false,
     "version": "1.20.1",
     "type": "module",
+    "bin": {
+        "chartdb-local": "./bin/chartdb-local.js"
+    },
+    "files": [
+        "dist",
+        "bin",
+        "README.md",
+        "LICENSE"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "dev": "vite",
         "build": "npm run lint && tsc -b && vite build",
         "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
         "lint:fix": "npm run lint -- --fix",
         "preview": "vite preview",
+        "prepack": "npm run build",
+        "verify:package": "node scripts/verify-package.mjs",
         "prepare": "husky",
         "test": "vitest",
         "test:ci": "vitest run --reporter=verbose --bail=1",
@@ -60,6 +74,7 @@
         "motion": "^12.23.6",
         "nanoid": "^5.0.7",
         "node-sql-parser": "^5.3.2",
+        "open": "^8.4.2",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-helmet-async": "^2.0.5",
@@ -72,6 +87,7 @@
         "react-use": "^17.5.1",
         "rehype-raw": "^7.0.0",
         "remark-gfm": "^4.0.1",
+        "sirv": "^3.0.2",
         "tailwind-merge": "^2.4.0",
         "tailwindcss-animate": "^1.0.7",
         "timeago-react": "^3.0.6",

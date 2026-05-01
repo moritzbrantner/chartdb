@@ -74,4 +74,12 @@ export default [
             '@typescript-eslint/no-empty-object-type': 'off',
         },
     },
+    {
+        files: ['bin/**/*.js', 'scripts/**/*.mjs'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
 ];

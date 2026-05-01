@@ -75,6 +75,37 @@ ChartDB is currently in Public Beta. Star and watch this repository to get notif
 
 Use the [cloud version](https://app.chartdb.io?ref=github_readme_2) or deploy locally:
 
+### Run ChartDB Local from npm
+
+This package serves the local ChartDB UI from the built Vite app. It does not
+require Docker, a database connection, or an OpenAI API key.
+
+```bash
+npx @moritzbrantner/chartdb-local
+```
+
+```bash
+bunx @moritzbrantner/chartdb-local
+```
+
+Use a custom port:
+
+```bash
+npx @moritzbrantner/chartdb-local --port 9090
+```
+
+Use a custom host and port:
+
+```bash
+npx @moritzbrantner/chartdb-local --host 0.0.0.0 --port 8080
+```
+
+Open the app in your default browser:
+
+```bash
+npx @moritzbrantner/chartdb-local --open
+```
+
 ### How To Use
 
 ```bash
@@ -95,6 +126,16 @@ Or like this if you want to have AI capabilities:
 npm install
 VITE_OPENAI_API_KEY=<YOUR_OPEN_AI_KEY> npm run build
 ```
+
+### Verify the npm package
+
+```bash
+npm run verify:package
+```
+
+If package verification appears stuck during `vite build`, make sure it is
+running under Node.js rather than a Bun-provided `node` shim. The verifier
+sanitizes common Bun/bunx environment variables automatically.
 
 ### Run the Docker Container
 
