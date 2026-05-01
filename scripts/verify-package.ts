@@ -1,15 +1,15 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import type { SpawnSyncOptionsWithStringEncoding } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const nodeCommand = process.platform === 'win32' ? 'node.exe' : 'node';
+const bunCommand = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const verifierEnv = createVerifierEnv();
 const timeouts = {
     build: 6 * 60 * 1000,
@@ -20,13 +20,30 @@ const timeouts = {
 
 const requiredFiles = [
     'package.json',
-    'bin/chartdb-local.js',
+    'bin/local-chartdb.ts',
+    'bin/runtime-config.ts',
     'dist/index.html',
     'README.md',
     'LICENSE',
 ];
 
-function createVerifierEnv() {
+type RunOptions = {
+    capture?: boolean;
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+    timeout?: number;
+};
+
+type PackedFile = {
+    path: string;
+};
+
+type PackResult = {
+    filename: string;
+    files: PackedFile[];
+};
+
+function createVerifierEnv(): NodeJS.ProcessEnv {
     const env = { ...process.env };
 
     delete env.BUN_INTERNAL_BUNX_INSTALL;
@@ -54,26 +71,33 @@ function createVerifierEnv() {
     return env;
 }
 
-function formatCommand(command, args) {
+function formatCommand(command: string, args: string[]): string {
     return [command, ...args].join(' ');
 }
 
-function run(command, args, options = {}) {
+function run(
+    command: string,
+    args: string[],
+    options: RunOptions = {}
+): string {
     const env = { ...verifierEnv, ...options.env };
-    const result = spawnSync(command, args, {
+    const spawnOptions: SpawnSyncOptionsWithStringEncoding = {
         cwd: options.cwd ?? rootDir,
         encoding: 'utf8',
         stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
         shell: false,
         env,
         timeout: options.timeout,
-    });
+    };
+    const result = spawnSync(command, args, spawnOptions);
 
-    if (result.error?.code === 'ETIMEDOUT') {
+    const spawnError = result.error as NodeJS.ErrnoException | undefined;
+
+    if (spawnError?.code === 'ETIMEDOUT') {
         const seconds = Math.round((options.timeout ?? 0) / 1000);
         throw new Error(
             `Command timed out after ${seconds}s: ${formatCommand(command, args)}\n` +
-                `The verifier must run under real Node.js. Detected PATH: ${env.PATH}`
+                `The verifier must run under real Bun. Detected PATH: ${env.PATH}`
         );
     }
 
@@ -93,16 +117,20 @@ function run(command, args, options = {}) {
     return result.stdout;
 }
 
-function readPackResult(stdout) {
+function readPackResult(stdout: string): PackResult {
     try {
-        const packResult = JSON.parse(stdout);
+        const packResult = JSON.parse(stdout) as PackResult[];
         return packResult[0];
-    } catch (error) {
+    } catch (error: unknown) {
+        if (!(error instanceof Error)) {
+            throw error;
+        }
+
         throw new Error(`Unable to parse npm pack output: ${error.message}`);
     }
 }
 
-function verifyPackedFiles(files) {
+function verifyPackedFiles(files: PackedFile[]): void {
     const paths = new Set(files.map((file) => file.path));
 
     for (const file of requiredFiles) {
@@ -116,31 +144,27 @@ function verifyPackedFiles(files) {
     }
 }
 
-function printVerifierEnvironment() {
-    const nodeVersion = run(nodeCommand, ['--version'], {
+function printVerifierEnvironment(): void {
+    const bunVersion = run(bunCommand, ['--version'], {
         capture: true,
     }).trim();
     const npmVersion = run(npmCommand, ['--version'], { capture: true }).trim();
 
     console.log('Verifier environment:');
-    console.log(`Node: ${nodeVersion}`);
+    console.log(`Bun: ${bunVersion}`);
     console.log(`npm: ${npmVersion}`);
 
-    if (process.versions.bun) {
-        console.log(
-            'Bun runtime detected for the parent process; child npm commands will run with a sanitized PATH.'
-        );
-    }
+    console.log('Package CLI will be verified with bunx --bun.');
 }
 
-let tarballPath;
-let tempDir;
+let tarballPath: string | undefined;
+let tempDir: string | undefined;
 
 try {
     printVerifierEnvironment();
 
     console.log('Building ChartDB...');
-    run(npmCommand, ['run', 'build'], { timeout: timeouts.build });
+    run(bunCommand, ['run', 'build'], { timeout: timeouts.build });
 
     console.log('Packing npm package...');
     const packResult = readPackResult(
@@ -153,23 +177,28 @@ try {
     verifyPackedFiles(packResult.files);
     tarballPath = join(rootDir, packResult.filename);
 
-    tempDir = mkdtempSync(join(tmpdir(), 'chartdb-local-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'local-chartdb-'));
     writeFileSync(
         join(tempDir, 'package.json'),
-        '{"name":"chartdb-local-verify","private":true}\n'
+        '{"name":"local-chartdb-verify","private":true}\n'
     );
 
-    console.log('Installing packed package in a temporary project...');
-    run(
-        npmCommand,
-        ['install', tarballPath, '--ignore-scripts', '--no-audit', '--no-fund'],
-        { cwd: tempDir, timeout: timeouts.install }
-    );
+    console.log('Installing packed package with Bun in a temporary project...');
+    run(bunCommand, ['add', tarballPath, '--ignore-scripts'], {
+        cwd: tempDir,
+        timeout: timeouts.install,
+    });
 
-    console.log('Verifying npx help output...');
+    console.log('Verifying bunx --bun help output...');
     run(
-        npxCommand,
-        ['--no-install', '@moritzbrantner/chartdb-local', '--help'],
+        bunCommand,
+        [
+            'x',
+            '--bun',
+            '--no-install',
+            '@moritzbrantner/local-chartdb',
+            '--help',
+        ],
         {
             cwd: tempDir,
             timeout: timeouts.help,

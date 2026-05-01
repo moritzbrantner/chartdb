@@ -1,17 +1,20 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { createServer } from 'node:http';
+import type { Server } from 'node:http';
 import { accessSync, constants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import open from 'open';
 import sirv from 'sirv';
+import { renderRuntimeConfig } from './runtime-config';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8080;
+const runtimeConfigPath = '/config.js';
 
 const helpText = `Usage:
-  chartdb-local [options]
+  local-chartdb [options]
 
 Options:
   --host <host>    Host to bind to (default: ${DEFAULT_HOST})
@@ -20,12 +23,19 @@ Options:
   --help, -h       Show this help message
 
 Examples:
-  chartdb-local
-  chartdb-local --port 9090
-  chartdb-local --host 0.0.0.0 --port 8080 --open
+  local-chartdb
+  local-chartdb --port 9090
+  local-chartdb --host 0.0.0.0 --port 8080 --open
 `;
 
-function parseArgs(argv) {
+type CliOptions = {
+    host: string;
+    port: number;
+    open: boolean;
+    help: boolean;
+};
+
+function parseArgs(argv: string[]): CliOptions {
     const options = {
         host: DEFAULT_HOST,
         port: DEFAULT_PORT,
@@ -76,7 +86,7 @@ function parseArgs(argv) {
     return options;
 }
 
-function readValue(value, option) {
+function readValue(value: string | undefined, option: string): string {
     if (!value || value.startsWith('--')) {
         throw new Error(`${option} requires a value.`);
     }
@@ -84,7 +94,7 @@ function readValue(value, option) {
     return value;
 }
 
-function parsePort(value) {
+function parsePort(value: string): number {
     const port = Number(value);
 
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -94,24 +104,28 @@ function parsePort(value) {
     return port;
 }
 
-function formatUrl(host, port) {
+function formatUrl(host: string, port: number): string {
     const urlHost =
         host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
     return `http://${urlHost}:${port}`;
 }
 
-function verifyDist(distDir) {
+function verifyDist(distDir: string): void {
     try {
         accessSync(resolve(distDir, 'index.html'), constants.R_OK);
     } catch {
         console.error(
-            'dist/index.html was not found. Run npm run build before using the CLI, or reinstall the package.'
+            'dist/index.html was not found. Run bun run build before using the CLI, or reinstall the package.'
         );
         process.exit(1);
     }
 }
 
-function handleListenError(error, host, port) {
+function handleListenError(
+    error: NodeJS.ErrnoException,
+    host: string,
+    port: number
+): void {
     if (error.code === 'EADDRINUSE') {
         console.error(
             `Port ${port} is already in use on ${host}. Try --port <number>.`
@@ -127,7 +141,7 @@ function handleListenError(error, host, port) {
     process.exit(1);
 }
 
-function installShutdownHandlers(server) {
+function installShutdownHandlers(server: Server): void {
     let shuttingDown = false;
 
     const shutdown = () => {
@@ -151,11 +165,15 @@ function installShutdownHandlers(server) {
     process.once('SIGTERM', shutdown);
 }
 
-let options;
+let options: CliOptions;
 
 try {
     options = parseArgs(process.argv.slice(2));
-} catch (error) {
+} catch (error: unknown) {
+    if (!(error instanceof Error)) {
+        throw error;
+    }
+
     console.error(error.message);
     console.error('');
     console.error(helpText);
@@ -178,6 +196,15 @@ const serve = sirv(distDir, {
 });
 
 const server = createServer((request, response) => {
+    if (request.url?.split('?')[0] === runtimeConfigPath) {
+        response.writeHead(200, {
+            'Content-Type': 'application/javascript; charset=utf-8',
+            'Cache-Control': 'no-store',
+        });
+        response.end(renderRuntimeConfig(process.env));
+        return;
+    }
+
     serve(request, response);
 });
 
@@ -192,7 +219,7 @@ server.listen(options.port, options.host, () => {
     console.log(`ChartDB Local is running at ${url}`);
 
     if (options.open) {
-        open(url).catch((error) => {
+        open(url).catch((error: Error) => {
             console.warn(
                 `Could not open the browser automatically: ${error.message}`
             );

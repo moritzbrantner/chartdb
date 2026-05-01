@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import type { Linter } from 'eslint';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,9 +19,9 @@ const compat = new FlatCompat({
     allConfig: js.configs.all,
 });
 
-export default [
+const config: Linter.Config[] = [
     {
-        ignores: ['**/dist', '**/.eslintrc.cjs', '**/tailwind.config.js'],
+        ignores: ['**/dist', '**/.eslintrc.cjs'],
         // files: ['**/*.ts', '**/*.tsx'],
     },
     ...fixupConfigRules(
@@ -75,7 +76,7 @@ export default [
         },
     },
     {
-        files: ['bin/**/*.js', 'scripts/**/*.mjs'],
+        files: ['bin/**/*.ts', 'scripts/**/*.ts'],
         languageOptions: {
             globals: {
                 ...globals.node,
@@ -83,3 +84,5 @@ export default [
         },
     },
 ];
+
+export default config;

@@ -81,29 +81,25 @@ This package serves the local ChartDB UI from the built Vite app. It does not
 require Docker, a database connection, or an OpenAI API key.
 
 ```bash
-npx @moritzbrantner/chartdb-local
-```
-
-```bash
-bunx @moritzbrantner/chartdb-local
+bunx --bun @moritzbrantner/local-chartdb
 ```
 
 Use a custom port:
 
 ```bash
-npx @moritzbrantner/chartdb-local --port 9090
+bunx --bun @moritzbrantner/local-chartdb --port 9090
 ```
 
 Use a custom host and port:
 
 ```bash
-npx @moritzbrantner/chartdb-local --host 0.0.0.0 --port 8080
+bunx --bun @moritzbrantner/local-chartdb --host 0.0.0.0 --port 8080
 ```
 
 Open the app in your default browser:
 
 ```bash
-npx @moritzbrantner/chartdb-local --open
+bunx --bun @moritzbrantner/local-chartdb --open
 ```
 
 ### How To Use

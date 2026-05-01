@@ -1,10 +1,10 @@
 {
-    "name": "@moritzbrantner/chartdb-local",
+    "name": "@moritzbrantner/local-chartdb",
     "private": false,
     "version": "1.20.1",
     "type": "module",
     "bin": {
-        "chartdb-local": "./bin/chartdb-local.js"
+        "local-chartdb": "./bin/local-chartdb.ts"
     },
     "files": [
         "dist",
@@ -17,12 +17,12 @@
     },
     "scripts": {
         "dev": "vite",
-        "build": "npm run lint && tsc -b && vite build",
+        "build": "bun run lint && tsc -b && vite build",
         "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
-        "lint:fix": "npm run lint -- --fix",
+        "lint:fix": "bun run lint -- --fix",
         "preview": "vite preview",
-        "prepack": "npm run build",
-        "verify:package": "node scripts/verify-package.mjs",
+        "prepack": "bun run build",
+        "verify:package": "bun scripts/verify-package.ts",
         "prepare": "husky",
         "test": "vitest",
         "test:ci": "vitest run --reporter=verbose --bail=1",
