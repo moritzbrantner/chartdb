@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.x
+          registry-url: https://registry.npmjs.org
 
       - name: Log in to the Container registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
@@ -41,6 +42,14 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Verify npm package
+        run: npm run verify:package
+
+      - name: Publish npm package
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
