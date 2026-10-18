@@ -21,6 +21,11 @@ jobs:
         with:
           node-version: 24.x
 
+      - name: Set up Bun for existing package scripts
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.3
+
       - name: Install dependencies
         run: npm ci
 
@@ -32,3 +37,16 @@ jobs:
 
       - name: Run tests
         run: npm run test:ci
+
+  merge-ready:
+    name: merge-ready
+    if: ${{ always() }}
+    needs: ["build"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: moritzbrantner/reusable-workflows/.github/actions/merge-ready@b0f25f241d76af2584dfc9e375084ff5c5cb97da
+        with:
+          needs: ${{ toJSON(needs) }}
+          required: '["build"]'
