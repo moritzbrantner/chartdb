@@ -32,3 +32,16 @@ jobs:
 
       - name: Run tests
         run: npm run test:ci
+
+  merge-ready:
+    name: merge-ready
+    if: ${{ always() }}
+    needs: ["build"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: moritzbrantner/reusable-workflows/.github/actions/merge-ready@b0f25f241d76af2584dfc9e375084ff5c5cb97da
+        with:
+          needs: ${{ toJSON(needs) }}
+          required: '["build"]'
