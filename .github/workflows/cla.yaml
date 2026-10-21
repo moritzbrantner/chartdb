@@ -14,6 +14,9 @@ permissions:
 
 jobs:
   CLAAssistant:
+    # The CLA signatures live in the upstream chartdb organisation and need its secret;
+    # this fork cannot run the check.
+    if: github.repository == 'chartdb/chartdb'
     runs-on: ubuntu-latest
     steps:
       - name: "CLA Assistant"
